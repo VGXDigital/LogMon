@@ -22,14 +22,21 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
-from glob import glob
+from typing import List, Dict, Any, Optional
 
 __version__ = "1.3.2"
 
 
 class LogMonitor:
-    def __init__(self, debug=False):
-        # Debug mode flag
+    error_patterns = [
+        r'error', r'fail', r'exception', r'traceback', r'critical',
+        r'fatal', r'warning', r'not found', r'permission denied',
+        r'connection refused', r'timeout', r'unable to', r'could not',
+        r'exit code', r'returned non-zero', r'aborted', r'killed'
+    ]
+
+    def __init__(self, debug: bool = False):
+        """Initialize the LogMonitor."""
         self.debug = debug
         if self.debug:
             print("=" * 60)
@@ -37,96 +44,69 @@ class LogMonitor:
             print(f"Run started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             print("=" * 60)
 
-        # Load configuration and initialize attributes
         self._configure()
-
-        # Error patterns to look for in logs
-        self.error_patterns = [
-            r'error', r'fail', r'exception', r'traceback', r'critical',
-            r'fatal', r'warning', r'not found', r'permission denied',
-            r'connection refused', r'timeout', r'unable to', r'could not',
-            r'exit code', r'returned non-zero', r'aborted', r'killed'
-        ]
-
-        # Combine patterns into a single regex for efficiency
-        combined_pattern = '|'.join(self.error_patterns)
-        self.compiled_pattern = re.compile(combined_pattern, re.IGNORECASE)
+        self.compiled_pattern = re.compile('|'.join(self.error_patterns), re.IGNORECASE)
 
         if self.debug:
-            print(f"Monitoring with combined regex pattern")
+            self._print_debug_info()
+            self.notification_file.touch(exist_ok=True)
 
-        # Create notification file if it doesn't exist (only in debug mode)
-        if self.debug:
-            Path(self.notification_file).touch(exist_ok=True)
-
-    def _configure(self):
-        """Load configuration from file and environment, then set attributes."""
+    def _configure(self) -> None:
+        """Load configuration from file and environment."""
         config = configparser.ConfigParser()
-        config_file = os.path.join(os.getcwd(), 'log_monitor.conf')
-        if os.path.exists(config_file):
+        config_file = Path.cwd() / 'log_monitor.conf'
+        if config_file.exists():
             config.read(config_file)
-            if self.debug:
-                print(f"Loaded config file: {config_file}")
-                print("Configuration overrides from file:")
-                for section in config.sections():
-                    print(f"  [{section}]")
-                    for key, value in config.items(section):
-                        # Mask password for security
-                        if 'password' in key.lower():
-                            value = '********'
-                        print(f"    {key} = {value}")
-        else:
-            if self.debug:
-                print(f"No config file found at: {config_file}")
 
-        # Directory settings
-        self.log_dir = os.getenv('VGX_LM_LOG_DIR') or config.get('Paths', 'log_dir', fallback="/home/vijendra/logs")
-        if self.debug:
-            print(f"Log directory: {self.log_dir}")
-
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Path settings
+        self.log_dir = Path(os.getenv('VGX_LM_LOG_DIR') or config.get('Paths', 'log_dir', fallback=Path.home() / 'logs'))
+        script_dir = Path(__file__).parent.resolve()
         writable_dir = self._get_writable_directory(script_dir)
-
-        self.notification_file = config.get('Paths', 'notification_file', fallback=os.path.join(writable_dir, 'notifications.log'))
-        self.last_check_file = config.get('Paths', 'last_check_file', fallback=os.path.join(writable_dir, '.last_check'))
-
-        if self.debug:
-            print(f"State directory: {writable_dir}")
-            print(f"Notification file: {self.notification_file}")
-            print(f"Last check file: {self.last_check_file}")
+        self.notification_file = Path(config.get('Paths', 'notification_file', fallback=writable_dir / 'notifications.log'))
+        self.last_check_file = Path(config.get('Paths', 'last_check_file', fallback=writable_dir / '.last_check'))
 
         # SMTP settings
-        self.smtp_server = os.getenv('VGX_LM_SMTP_SERVER') or config.get('SMTP', 'server', fallback='mail.smtp2go.com')
-        self.smtp_port = int(os.getenv('VGX_LM_SMTP_PORT') or config.get('SMTP', 'port', fallback='465'))
+        self.smtp_server = os.getenv('VGX_LM_SMTP_SERVER') or config.get('SMTP', 'server', fallback=None)
+        self.smtp_port = int(os.getenv('VGX_LM_SMTP_PORT') or config.get('SMTP', 'port', fallback=465))
         self.smtp_username = os.getenv('VGX_LM_SMTP_USERNAME') or config.get('SMTP', 'username', fallback=None)
         self.smtp_password = os.getenv('VGX_LM_SMTP_PASSWORD') or config.get('SMTP', 'password', fallback=None)
         self.smtp_from_email = os.getenv('VGX_LM_SMTP_FROM') or config.get('SMTP', 'from_email', fallback=None)
         self.smtp_to_email = os.getenv('VGX_LM_SMTP_TO') or config.get('SMTP', 'to_email', fallback=None)
 
+    def _print_debug_info(self) -> None:
+        """Print debug information."""
+        print("Monitoring with combined regex pattern")
+        print(f"Log directory: {self.log_dir}")
+        print(f"State directory: {self.last_check_file.parent}")
+        print(f"Notification file: {self.notification_file}")
+        print(f"Last check file: {self.last_check_file}")
+        print(f"SMTP Server: {self.smtp_server}:{self.smtp_port}")
+        print(f"SMTP From: {self.smtp_from_email}")
+        print(f"SMTP To: {self.smtp_to_email}")
+        print(f"SMTP Username: {self.smtp_username}")
 
-    def _get_writable_directory(self, preferred_dir):
+    def _get_writable_directory(self, preferred_dir: Path) -> Path:
         """Determine writable directory for state files."""
-        test_file = os.path.join(preferred_dir, '.write_test')
+        test_file = preferred_dir / '.write_test'
         try:
-            with open(test_file, 'w') as f:
-                f.write('test')
-            os.remove(test_file)
+            test_file.write_text('test')
+            test_file.unlink()
             return preferred_dir
         except (OSError, IOError):
-            fallback_dir = '/tmp/vgx.logmonitor'
-            os.makedirs(fallback_dir, exist_ok=True)
+            fallback_dir = Path('/tmp/vgx.logmonitor')
+            fallback_dir.mkdir(exist_ok=True)
             return fallback_dir
 
-    def get_log_files(self):
-        """Get all .log files recursively in log_dir, excluding notification file"""
-        if not os.path.exists(self.log_dir):
+    def get_log_files(self) -> List[Path]:
+        """Get all .log files recursively in log_dir, excluding notification file."""
+        if not self.log_dir.exists():
             if self.debug:
                 print(f"WARNING: Log directory does not exist: {self.log_dir}")
             return []
 
-        log_files = glob(os.path.join(self.log_dir, '**', '*.log'), recursive=True)
+        log_files = list(self.log_dir.rglob('*.log'))
         # Exclude the notification file to avoid scanning itself
-        filtered_files = [f for f in log_files if os.path.abspath(f) != os.path.abspath(self.notification_file)]
+        filtered_files = [f for f in log_files if f.resolve() != self.notification_file.resolve()]
 
         if self.debug:
             print(f"\nFound {len(filtered_files)} log file(s) to monitor:")
@@ -135,70 +115,63 @@ class LogMonitor:
 
         return filtered_files
 
-    def get_last_check_time(self):
-        """Get the timestamp of the last check from file"""
-        if os.path.exists(self.last_check_file):
-            with open(self.last_check_file, 'r') as f:
-                try:
-                    return float(f.read().strip())
-                except ValueError:
-                    return 0
+    def get_last_check_time(self) -> float:
+        """Get the timestamp of the last check from file."""
+        if self.last_check_file.exists():
+            try:
+                return float(self.last_check_file.read_text().strip())
+            except ValueError:
+                return 0
         return 0
 
-    def set_last_check_time(self, timestamp):
-        """Save the timestamp of the current check"""
-        with open(self.last_check_file, 'w') as f:
-            f.write(str(timestamp))
+    def set_last_check_time(self, timestamp: float) -> None:
+        """Save the timestamp of the current check."""
+        self.last_check_file.write_text(str(timestamp))
 
-    def find_errors_in_file(self, filepath, since_timestamp):
-        """Find errors in a specific file since the last check"""
-        # Check modification time before opening file
+    def find_errors_in_file(self, filepath: Path, since_timestamp: float) -> List[Dict[str, Any]]:
+        """Find errors in a specific file since the last check."""
         try:
-            if os.path.getmtime(filepath) < since_timestamp:
+            if filepath.stat().st_mtime < since_timestamp:
                 return []
         except OSError:
             return []
 
         errors = []
         try:
-            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            with filepath.open('r', encoding='utf-8', errors='ignore') as f:
                 for i, line in enumerate(f, 1):
                     if self.compiled_pattern.search(line):
                         errors.append({
-                            'file': filepath,
+                            'file': str(filepath),
                             'line_number': i,
                             'line_content': line.strip(),
                             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
         except Exception as e:
             if self.debug:
-                self.log_notification(f"Error reading file {filepath}: {str(e)}")
+                self.log_notification(f"Error reading file {filepath}: {e}")
 
         return errors
 
-    def scan_all_logs(self):
+    def scan_all_logs(self) -> List[Dict[str, Any]]:
         """Scan all log files for errors using a thread pool."""
         current_time = time.time()
         last_check = self.get_last_check_time()
 
-        # If first run, only check last hour
         if last_check == 0:
+            last_check = current_time - 3600
             if self.debug:
                 print("\nFirst run detected - scanning last hour of logs")
-            last_check = current_time - 3600
-        else:
-            if self.debug:
-                last_check_time = datetime.fromtimestamp(last_check).strftime('%Y-%m-%d %H:%M:%S')
-                print(f"\nLast check: {last_check_time}")
-
+        
         if self.debug:
+            last_check_time = datetime.fromtimestamp(last_check).strftime('%Y-%m-%d %H:%M:%S')
+            print(f"\nLast check: {last_check_time}")
             print("\nScanning log files for errors...")
 
-        all_errors = []
+        all_errors: List[Dict[str, Any]] = []
         log_files = self.get_log_files()
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            # Create a future for each log file scan
+        with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             future_to_file = {executor.submit(self.find_errors_in_file, log_file, last_check): log_file for log_file in log_files}
             for future in concurrent.futures.as_completed(future_to_file):
                 log_file = future_to_file[future]
@@ -219,8 +192,8 @@ class LogMonitor:
 
         return all_errors
 
-    def log_notification(self, message):
-        """Log notification to file (only in debug mode)"""
+    def log_notification(self, message: str) -> None:
+        """Log notification to file (only in debug mode)."""
         if not self.debug:
             return
 
@@ -228,65 +201,93 @@ class LogMonitor:
         log_entry = f"[{timestamp}] {message}\n"
 
         try:
-            with open(self.notification_file, 'a') as f:
+            with self.notification_file.open('a') as f:
                 f.write(log_entry)
         except (OSError, IOError) as e:
             print(f"Warning: Could not write to notification file: {e}")
 
-    def send_notification(self, errors):
-        """Send notifications about detected errors"""
+    def send_notification(self, errors: List[Dict[str, Any]]) -> None:
+        """Send notifications about detected errors."""
         if not errors:
             return
 
         error_count = len(errors)
-        message = f"Log Monitor Alert: {error_count} error(s) detected in log files\n\n"
-        message += f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
-        for error in errors:
-            message += f"File: {error['file']}\n"
-            message += f"Line {error['line_number']}: {error['line_content']}\n"
-            message += f"Time: {error['timestamp']}\n\n"
-
-        # Print to terminal
-        print(f"LOG MONITOR ALERT")
-        print(message)
-
+        
         # Log to notification file
         self.log_notification(f"Detected {error_count} errors")
-        self.log_notification(message)
 
         # Send email notification
-        self.send_email_notification(message, error_count)
+        self.send_email_notification(errors)
 
-    def send_email_notification(self, message, error_count):
-        """Send email notification via SMTP"""
+    def _create_html_email(self, errors: List[Dict[str, Any]]) -> str:
+        """Create an HTML formatted email body."""
+        error_count = len(errors)
+        
+        html = f"""
+        <html>
+            <head>
+                <style>
+                    body {{ font-family: sans-serif; }}
+                    h1 {{ color: #d9534f; }}
+                    table {{ border-collapse: collapse; width: 100%; }}
+                    th, td {{ border: 1px solid #ddd; padding: 8px; }}
+                    th {{ background-color: #f2f2f2; }}
+                </style>
+            </head>
+            <body>
+                <h1>Log Monitor Alert: {error_count} error(s) detected</h1>
+                <p><strong>Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                <table>
+                    <tr>
+                        <th>File</th>
+                        <th>Line</th>
+                        <th>Content</th>
+                        <th>Timestamp</th>
+                    </tr>
+        """
+
+        for error in errors:
+            html += f"""
+                    <tr>
+                        <td>{error['file']}</td>
+                        <td>{error['line_number']}</td>
+                        <td><code>{error['line_content']}</code></td>
+                        <td>{error['timestamp']}</td>
+                    </tr>
+            """
+
+        html += """
+                </table>
+            </body>
+        </html>
+        """
+        return html
+
+    def send_email_notification(self, errors: List[Dict[str, Any]]) -> None:
+        """Send email notification via SMTP."""
+        error_count = len(errors)
         try:
             if self.debug:
-                print(f"\nAttempting to send email notification...")
+                print("\nAttempting to send email notification...")
                 print(f"  SMTP Server: {self.smtp_server}:{self.smtp_port}")
                 print(f"  From: {self.smtp_from_email}")
                 print(f"  To: {self.smtp_to_email}")
                 print(f"  Username: {self.smtp_username}")
 
-            if not all([self.smtp_username, self.smtp_password, self.smtp_from_email, self.smtp_to_email]):
-                raise ValueError("Missing SMTP credentials")
+            if not all([self.smtp_server, self.smtp_username, self.smtp_password, self.smtp_from_email, self.smtp_to_email]):
+                raise ValueError("Missing SMTP configuration. Please check your config file or environment variables.")
 
             msg = MIMEMultipart()
             msg['From'] = self.smtp_from_email
             msg['To'] = self.smtp_to_email
             msg['Subject'] = f"Log Monitor Alert: {error_count} errors detected"
-            msg.attach(MIMEText(message, 'plain'))
-
-            if self.debug:
-                print(f"  Connecting to {self.smtp_server}...")
+            
+            html_body = self._create_html_email(errors)
+            msg.attach(MIMEText(html_body, 'html'))
 
             context = ssl.create_default_context()
             with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, context=context) as server:
-                if self.debug:
-                    print(f"  Logging in...")
                 server.login(self.smtp_username, self.smtp_password)
-                if self.debug:
-                    print(f"  Sending message...")
                 server.sendmail(self.smtp_from_email, self.smtp_to_email, msg.as_string())
 
             if self.debug:
@@ -294,13 +295,13 @@ class LogMonitor:
             self.log_notification(f"Email sent to {self.smtp_to_email}")
 
         except Exception as e:
-            error_msg = f"Failed to send email: {str(e)}"
+            error_msg = f"Failed to send email: {e}"
             if self.debug:
                 print(f"  ✗ {error_msg}")
             self.log_notification(error_msg)
 
-    def run(self):
-        """Main method to run the log monitor"""
+    def run(self) -> None:
+        """Main method to run the log monitor."""
         if self.debug:
             print("\n" + "=" * 60)
             print("Starting log scan...")
@@ -310,9 +311,8 @@ class LogMonitor:
 
         if errors:
             self.send_notification(errors)
-        else:
-            if self.debug:
-                print("\n✓ No errors found - all clear!")
+        elif self.debug:
+            print("\n✓ No errors found - all clear!")
 
         if self.debug:
             print("\n" + "=" * 60)
@@ -321,8 +321,8 @@ class LogMonitor:
             print("=" * 60)
 
 
-if __name__ == "__main__":
-    # Parse command line arguments
+def main():
+    """Main function to run the log monitor."""
     parser = argparse.ArgumentParser(
         description='Monitor log files for errors and send notifications',
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -334,6 +334,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Create and run the monitor
-    monitor = LogMonitor(debug=args.debug)
-    monitor.run()
+    try:
+        monitor = LogMonitor(debug=args.debug)
+        monitor.run()
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        if args.debug:
+            import traceback
+            traceback.print_exc()
+
+
+if __name__ == "__main__":
+    main()
