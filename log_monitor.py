@@ -49,6 +49,7 @@ class LogMonitor:
 
         if self.debug:
             self._print_debug_info()
+            self.notification_file.parent.mkdir(parents=True, exist_ok=True)
             self.notification_file.touch(exist_ok=True)
 
     def _configure(self) -> None:
