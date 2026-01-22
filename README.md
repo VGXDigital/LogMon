@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://vgx.digital">
+    <img src="https://vgx.digital/vgx_email_sig.png" alt="VGX Consulting" width="200">
+  </a>
+</p>
+
 # 📋 LogMon
 
 **Simple, automated log file monitoring with email notifications.**
