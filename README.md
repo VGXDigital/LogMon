@@ -18,14 +18,14 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ## ✨ Features
 
-| Feature | Description |
-|---------|-------------|
+| Feature                        | Description                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------ |
 | 🔍 **Smart Pattern Detection** | Detects errors, exceptions, warnings, timeouts, and more using optimized regex |
-| 📧 **Email Notifications** | Instant HTML email alerts via secure SMTP/SSL |
-| ⚡ **High Performance** | Concurrent scanning with thread pools and compiled regex |
-| 🔄 **Incremental Scanning** | Only scans new content since last check — efficient for cron |
-| 📦 **Standalone Executable** | No Python required on your servers |
-| 🔧 **Flexible Configuration** | Environment variables or config file |
+| 📧 **Email Notifications**     | Instant HTML email alerts via secure SMTP/SSL                                  |
+| ⚡ **High Performance**         | Concurrent scanning with thread pools and compiled regex                       |
+| 🔄 **Incremental Scanning**    | Only scans new content since last check — efficient for cron                   |
+| 📦 **Standalone Executable**   | No Python required on your servers                                             |
+| 🔧 **Flexible Configuration**  | Environment variables or config file                                           |
 
 ---
 
@@ -98,15 +98,15 @@ log_dir = /var/log/myapp
 
 Environment variables override config file settings. Use the `VGX_LM_` prefix:
 
-| Variable | Description |
-|----------|-------------|
-| `VGX_LM_SMTP_SERVER` | SMTP server hostname |
-| `VGX_LM_SMTP_PORT` | SMTP port (default: 465) |
-| `VGX_LM_SMTP_USERNAME` | SMTP username |
-| `VGX_LM_SMTP_PASSWORD` | SMTP password |
-| `VGX_LM_SMTP_FROM` | From email address |
-| `VGX_LM_SMTP_TO` | Recipient email address |
-| `VGX_LM_LOG_DIR` | Directory to scan for *.log files |
+| Variable               | Description                       |
+| ---------------------- | --------------------------------- |
+| `VGX_LM_SMTP_SERVER`   | SMTP server hostname              |
+| `VGX_LM_SMTP_PORT`     | SMTP port (default: 465)          |
+| `VGX_LM_SMTP_USERNAME` | SMTP username                     |
+| `VGX_LM_SMTP_PASSWORD` | SMTP password                     |
+| `VGX_LM_SMTP_FROM`     | From email address                |
+| `VGX_LM_SMTP_TO`       | Recipient email address           |
+| `VGX_LM_LOG_DIR`       | Directory to scan for *.log files |
 
 ---
 
@@ -164,10 +164,10 @@ When errors are detected, you'll receive an HTML email like:
 
 > **Log Monitor Alert: 3 error(s) detected**
 > 
-> | File | Line | Content | Timestamp |
-> |------|------|---------|-----------|
-> | /var/log/app/error.log | 142 | `ERROR: Connection timeout` | 2026-01-22 10:15:32 |
-> | /var/log/app/app.log | 89 | `Exception in thread main` | 2026-01-22 10:15:32 |
+> | File                   | Line | Content                     | Timestamp           |
+> | ---------------------- | ---- | --------------------------- | ------------------- |
+> | /var/log/app/error.log | 142  | `ERROR: Connection timeout` | 2026-01-22 10:15:32 |
+> | /var/log/app/app.log   | 89   | `Exception in thread main`  | 2026-01-22 10:15:32 |
 
 ---
 
