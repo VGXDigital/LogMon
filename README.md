@@ -1,158 +1,192 @@
-# Log Monitor
+# 📋 LogMon
 
-A simple log monitoring tool that scans log files for errors and sends email notifications.
+**Simple, automated log file monitoring with email notifications.**
 
-**VGX Consulting - Log Monitoring Solution**
+[![Release](https://img.shields.io/github/v/release/VGXConsulting/LogMon?style=flat-square)](https://github.com/VGXConsulting/LogMon/releases/latest)
+[![License](https://img.shields.io/badge/license-Proprietary-blue?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Linux%20x86__64-lightgrey?style=flat-square)]()
 
-Version: 1.3.0
+Scan your log files for errors, exceptions, and warnings — get instant email alerts when issues are detected.
 
-## Version 1.3.0 Updates
+---
 
-- **Performance Enhancements**:
-    - Combined all error patterns into a single, highly optimized regular expression for faster scanning.
-    - Introduced concurrent processing to scan multiple log files in parallel, significantly improving performance for environments with many log files.
-- **Improved Code Structure**:
-    - Refactored configuration loading into a centralized method, enhancing code readability and maintainability.
+## ✨ Features
 
-## Features
+| Feature | Description |
+|---------|-------------|
+| 🔍 **Smart Pattern Detection** | Detects errors, exceptions, warnings, timeouts, and more using optimized regex |
+| 📧 **Email Notifications** | Instant HTML email alerts via secure SMTP/SSL |
+| ⚡ **High Performance** | Concurrent scanning with thread pools and compiled regex |
+| 🔄 **Incremental Scanning** | Only scans new content since last check — efficient for cron |
+| 📦 **Standalone Executable** | No Python required on your servers |
+| 🔧 **Flexible Configuration** | Environment variables or config file |
 
-- Recursively scans all .log files in configured directory
-- Tracks last check time to only scan new content (efficient)
-- Sends email notifications via SMTP when errors are detected
-- Optional debug mode with detailed logging to notification file
-- Configurable via config file or environment variables
-- Smart writable directory detection (falls back to /tmp if needed)
-- Automatic exclusion of notification log from monitoring
+---
 
-## Requirements
+## 🆕 What's New in v1.3.2
 
-- Python 3.6+
-- Access to an SMTP server with SSL support (port 465)
-- Standard Python libraries: os, re, ssl, time, smtplib, argparse, configparser, datetime, email, pathlib, glob
+- Combined regex patterns for faster scanning
+- Concurrent file processing with thread pools
+- Improved configuration loading
+- Better debug output formatting
 
-## Setup
+---
 
-1. Clone or copy the `log_monitor.py` script to your server
-2. Make the script executable: `chmod +x log_monitor.py`
-3. Configure using either:
-   - Create `log_monitor.conf` in the directory where you'll run the script (recommended)
-   - Set environment variables (see Configuration below)
-4. Test the script: `./log_monitor.py --debug`
-5. Add to your crontab to run periodically:
+## 📦 Installation
+
+### Option 1: Download Standalone Executable (Recommended)
 
 ```bash
-# Run every 5 minutes (make sure to cd to the directory with log_monitor.conf first)
-*/5 * * * * cd /home/vijendra/logs && /usr/bin/python3 /home/vijendra/logs/log_monitor.py
+# Download the latest release
+wget https://github.com/VGXConsulting/LogMon/releases/latest/download/log_monitor-linux-x86_64.tar.gz
+
+# Extract
+tar -xzf log_monitor-linux-x86_64.tar.gz
+
+# Make executable
+chmod +x log_monitor
+
+# Configure
+cp log_monitor.conf.example log_monitor.conf
+nano log_monitor.conf
+
+# Test
+./log_monitor --debug
 ```
 
-## Usage
+### Option 2: Run with Python
 
 ```bash
-# Normal mode (silent unless errors found)
-./log_monitor.py
+# Clone the repository
+git clone https://github.com/VGXConsulting/LogMon.git
+cd LogMon
 
-# Debug mode (detailed logging to notifications.log)
-./log_monitor.py --debug
+# Configure
+cp log_monitor.conf.example log_monitor.conf
+nano log_monitor.conf
 
-# Show version
-./log_monitor.py --version
+# Run
+python3 log_monitor.py --debug
 ```
 
-## Configuration
+---
 
-The script can be configured in three ways (in order of priority):
+## 🔧 Configuration
 
-1. **Environment Variables** (highest priority)
-2. **Configuration File** (log_monitor.conf)
-3. **Default Values** (fallback)
-
-### Option 1: Configuration File (Recommended)
-
-Create a `log_monitor.conf` file in the **current directory** where you run the script from. The script automatically looks for this file at startup using `os.getcwd()`.
-
-**Important:** The config file must be in your current working directory when you execute the script. For cron jobs, this is typically your home directory unless you `cd` to another location first.
-
-Edit `log_monitor.conf`:
+Edit `log_monitor.conf` with your settings:
 
 ```ini
 [SMTP]
-server = mail.smtp2go.com
+server = smtp.example.com
 port = 465
 username = your_smtp_username
 password = your_smtp_password
-from_email = your_from_email@domain.com
-to_email = your_notification_email@domain.com
+from_email = monitoring@example.com
+to_email = admin@example.com
 
 [Paths]
-# Optional: Override default log directory (default: /home/vijendra/logs)
-log_dir = /home/vijendra/logs
-
-# Optional: Override notification file location
-# notification_file = /path/to/notifications.log
-
-# Optional: Override last check timestamp file location
-# last_check_file = /path/to/.last_check
+log_dir = /var/log/myapp
 ```
 
-**Benefits:**
-- Easy to manage all settings in one place
-- No need to set environment variables
-- Can be version controlled (if credentials kept secure)
-
-### Option 2: Environment Variables
+### Environment Variables
 
 Environment variables override config file settings. Use the `VGX_LM_` prefix:
 
-**SMTP Settings:**
-```bash
-export VGX_LM_SMTP_SERVER="mail.smtp2go.com"
-export VGX_LM_SMTP_PORT="465"
-export VGX_LM_SMTP_USERNAME="your_smtp_username"
-export VGX_LM_SMTP_PASSWORD="your_smtp_password"
-export VGX_LM_SMTP_FROM="your_from_email@domain.com"
-export VGX_LM_SMTP_TO="your_notification_email@domain.com"
+| Variable | Description |
+|----------|-------------|
+| `VGX_LM_SMTP_SERVER` | SMTP server hostname |
+| `VGX_LM_SMTP_PORT` | SMTP port (default: 465) |
+| `VGX_LM_SMTP_USERNAME` | SMTP username |
+| `VGX_LM_SMTP_PASSWORD` | SMTP password |
+| `VGX_LM_SMTP_FROM` | From email address |
+| `VGX_LM_SMTP_TO` | Recipient email address |
+| `VGX_LM_LOG_DIR` | Directory to scan for *.log files |
+
+---
+
+## 🔍 Detected Patterns
+
+LogMon scans for these error indicators:
+
+```
+error, fail, exception, traceback, critical, fatal,
+warning, not found, permission denied, connection refused,
+timeout, unable to, could not, exit code, returned non-zero,
+aborted, killed
 ```
 
-**Path Settings:**
-```bash
-export VGX_LM_LOG_DIR="/home/vijendra/logs"
-```
+---
 
-Add these to your `~/.bashrc`, `~/.profile`, or `/etc/environment` for persistence.
+## ⏰ Automation (Cron)
 
-For cron jobs, you can set them in the crontab:
+Add to crontab for automated monitoring:
 
 ```bash
-VGX_LM_SMTP_USERNAME=your_smtp_username
-VGX_LM_SMTP_PASSWORD=your_smtp_password
-VGX_LM_SMTP_FROM=your_from_email@domain.com
-VGX_LM_SMTP_TO=your_notification_email@domain.com
-*/5 * * * * /usr/bin/python3 /path/to/log_monitor.py
+# Edit crontab
+crontab -e
+
+# Run every 15 minutes
+*/15 * * * * cd /path/to/logmon && ./log_monitor
+
+# Or with debug logging
+*/15 * * * * cd /path/to/logmon && ./log_monitor --debug >> /var/log/logmon.log 2>&1
 ```
 
-**Benefits:**
-- Environment variables override config file settings
-- More secure for production environments
-- Can be set per-environment
+---
 
-### Option 3: Script Configuration
+## 📖 Usage
 
-Edit the script directly to configure:
+```bash
+# Normal mode (silent unless errors found)
+./log_monitor
 
-- Log directories and files to monitor (lines 50-57)
-- Error patterns to look for (lines 39-44)
-- Notification settings
+# Debug mode (detailed output)
+./log_monitor --debug
 
-**Note:** This is the least recommended approach as it requires modifying the source code.
+# Show version
+./log_monitor --version
 
-## How It Works
+# Show help
+./log_monitor --help
+```
 
-The script scans your configured log files for patterns that indicate errors (like "error", "fail", "exception", etc.). When errors are found, it sends an email notification with details about the errors and logs them to a notification file.
+---
 
-The script keeps track of the last time it ran, so it only checks new content in the log files since the last run, making it efficient for periodic execution.
+## 📧 Email Alert Example
 
-## Copyright
+When errors are detected, you'll receive an HTML email like:
 
-Copyright (c) 2026 VGX Consulting. All rights reserved.
+> **Log Monitor Alert: 3 error(s) detected**
+> 
+> | File | Line | Content | Timestamp |
+> |------|------|---------|-----------|
+> | /var/log/app/error.log | 142 | `ERROR: Connection timeout` | 2026-01-22 10:15:32 |
+> | /var/log/app/app.log | 89 | `Exception in thread main` | 2026-01-22 10:15:32 |
 
-This is proprietary software. Unauthorized copying, modification, distribution, or use of this software is strictly prohibited.
+---
+
+## 🏗️ Building from Source
+
+```bash
+# Install build dependencies
+pip install -r requirements.txt
+
+# Build standalone executable
+pyinstaller --onefile --name log_monitor log_monitor.py
+
+# Executable will be at dist/log_monitor
+```
+
+---
+
+## 📄 License
+
+**Proprietary Software** — © 2026 [VGX Consulting](https://vgx.digital). All rights reserved.
+
+Unauthorized copying, modification, distribution, or use of this software is strictly prohibited.
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://vgx.digital">VGX Consulting</a>
+</p>

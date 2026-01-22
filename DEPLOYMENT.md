@@ -7,7 +7,7 @@ This guide covers deploying the Log Monitor as a standalone executable on server
 
 ### Option 1: Download from GitHub Releases (Recommended)
 
-1. Go to the [Releases page](https://github.com/YOUR_USERNAME/LogMonitor/releases/latest)
+1. Go to the [Releases page](https://github.com/VGXConsulting/LogMon/releases/latest)
 2. Download the latest `log_monitor-linux-x86_64` file
 3. Rename it to `log_monitor`: `mv log_monitor-linux-x86_64 log_monitor`
 
@@ -149,4 +149,4 @@ git push origin v1.2.0
    - Upload the executable as `log_monitor-linux-x86_64`
    - Make it available for download
 
-The release will be available at: `https://github.com/YOUR_USERNAME/LogMonitor/releases/tag/v1.2.0`
+The release will be available at: `https://github.com/VGXConsulting/LogMon/releases/tag/v1.2.0`
