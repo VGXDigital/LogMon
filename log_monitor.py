@@ -24,7 +24,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 
 
 class LogMonitor:
@@ -52,6 +52,13 @@ class LogMonitor:
             self.notification_file.parent.mkdir(parents=True, exist_ok=True)
             self.notification_file.touch(exist_ok=True)
 
+    @staticmethod
+    def _strip_quotes(value: Optional[str]) -> Optional[str]:
+        """Strip surrounding quotes from config values."""
+        if value and len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            return value[1:-1]
+        return value
+
     def _configure(self) -> None:
         """Load configuration from file and environment."""
         config = configparser.ConfigParser()
@@ -59,20 +66,23 @@ class LogMonitor:
         if config_file.exists():
             config.read(config_file)
 
+        def cfg(section: str, key: str, fallback: Any = None) -> Optional[str]:
+            return self._strip_quotes(config.get(section, key, fallback=fallback))
+
         # Path settings
-        self.log_dir = Path(os.getenv('VGX_LM_LOG_DIR') or config.get('Paths', 'log_dir', fallback=Path.home() / 'logs'))
+        self.log_dir = Path(os.getenv('VGX_LM_LOG_DIR') or cfg('Paths', 'log_dir', fallback=Path.home() / 'logs'))
         script_dir = Path(__file__).parent.resolve()
         writable_dir = self._get_writable_directory(script_dir)
-        self.notification_file = Path(config.get('Paths', 'notification_file', fallback=writable_dir / 'notifications.log'))
-        self.last_check_file = Path(config.get('Paths', 'last_check_file', fallback=writable_dir / '.last_check'))
+        self.notification_file = Path(cfg('Paths', 'notification_file', fallback=writable_dir / 'notifications.log'))
+        self.last_check_file = Path(cfg('Paths', 'last_check_file', fallback=writable_dir / '.last_check'))
 
         # SMTP settings
-        self.smtp_server = os.getenv('VGX_LM_SMTP_SERVER') or config.get('SMTP', 'server', fallback=None)
-        self.smtp_port = int(os.getenv('VGX_LM_SMTP_PORT') or config.get('SMTP', 'port', fallback=465))
-        self.smtp_username = os.getenv('VGX_LM_SMTP_USERNAME') or config.get('SMTP', 'username', fallback=None)
-        self.smtp_password = os.getenv('VGX_LM_SMTP_PASSWORD') or config.get('SMTP', 'password', fallback=None)
-        self.smtp_from_email = os.getenv('VGX_LM_SMTP_FROM') or config.get('SMTP', 'from_email', fallback=None)
-        self.smtp_to_email = os.getenv('VGX_LM_SMTP_TO') or config.get('SMTP', 'to_email', fallback=None)
+        self.smtp_server = os.getenv('VGX_LM_SMTP_SERVER') or cfg('SMTP', 'server')
+        self.smtp_port = int(os.getenv('VGX_LM_SMTP_PORT') or cfg('SMTP', 'port', fallback='465'))
+        self.smtp_username = os.getenv('VGX_LM_SMTP_USERNAME') or cfg('SMTP', 'username')
+        self.smtp_password = os.getenv('VGX_LM_SMTP_PASSWORD') or cfg('SMTP', 'password')
+        self.smtp_from_email = os.getenv('VGX_LM_SMTP_FROM') or cfg('SMTP', 'from_email')
+        self.smtp_to_email = os.getenv('VGX_LM_SMTP_TO') or cfg('SMTP', 'to_email')
 
     def _print_debug_info(self) -> None:
         """Print debug information."""

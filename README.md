@@ -29,8 +29,9 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ---
 
-## 🆕 What's New in v1.3.2
+## 🆕 What's New in v1.3.3
 
+- Fix: Handle quoted values in config file (configparser does not strip quotes)
 - Combined regex patterns for faster scanning
 - Concurrent file processing with thread pools
 - Improved configuration loading
