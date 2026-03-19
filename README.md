@@ -23,17 +23,20 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 | 🔍 **Smart Pattern Detection** | Detects errors, exceptions, warnings, timeouts, and more using optimized regex |
 | 📧 **Email Notifications**     | Instant HTML email alerts via secure SMTP/SSL                                  |
 | ⚡ **High Performance**         | Concurrent scanning with thread pools and compiled regex                       |
-| 🔄 **Incremental Scanning**    | Only scans new content since last check — efficient for cron                   |
+| ⏱️ **Incremental Scanning**    | Only scans new content since last check — efficient for cron                   |
 | 📦 **Standalone Executable**   | No Python required on your servers                                             |
+| 🔄 **Self-Updating**           | Automatically updates itself from GitHub Releases (once daily)                 |
 | 🔧 **Flexible Configuration**  | Environment variables or config file                                           |
 
 ---
 
-## 🆕 What's New in v1.4.0
+## 🆕 What's New in v1.4.2
 
 - **Self-updating**: LogMon auto-updates itself from GitHub Releases (checks once daily)
-- One-line install: `curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash`
-- Manual update: `./log_monitor --update`
+- **One-line install**: `curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash`
+- **Manual update**: `./log_monitor --update`
+- **Smart config lookup**: finds `log_monitor.conf` next to the binary or in the current directory
+- **Disable auto-update**: set `auto_update = false` in `[Settings]`
 - Fix: Handle quoted values in config file
 
 ---
@@ -90,7 +93,15 @@ to_email = admin@example.com
 
 [Paths]
 log_dir = /var/log/myapp
+
+[Settings]
+# Auto-update is on by default. Disable with:
+auto_update = false
 ```
+
+The config file is looked up in this order:
+1. Current working directory
+2. Same directory as the `log_monitor` binary
 
 ### Environment Variables
 
