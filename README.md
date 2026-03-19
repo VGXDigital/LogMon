@@ -29,35 +29,32 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ---
 
-## 🆕 What's New in v1.3.3
+## 🆕 What's New in v1.4.0
 
-- Fix: Handle quoted values in config file (configparser does not strip quotes)
-- Combined regex patterns for faster scanning
-- Concurrent file processing with thread pools
-- Improved configuration loading
-- Better debug output formatting
+- **Self-updating**: LogMon auto-updates itself from GitHub Releases (checks once daily)
+- One-line install: `curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash`
+- Manual update: `./log_monitor --update`
+- Fix: Handle quoted values in config file
 
 ---
 
 ## 📦 Installation
 
-### Option 1: Download Standalone Executable (Recommended)
+### Option 1: One-Line Install (Recommended)
 
 ```bash
-# Download the latest release
-wget https://github.com/VGXConsulting/LogMon/releases/latest/download/log_monitor-linux-x86_64.tar.gz
+curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash
+```
 
-# Extract
-tar -xzf log_monitor-linux-x86_64.tar.gz
+Or specify an install directory:
+```bash
+curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash -s -- /opt/logmon
+```
 
-# Make executable
-chmod +x log_monitor
-
-# Configure
+Then configure and test:
+```bash
 cp log_monitor.conf.example log_monitor.conf
 nano log_monitor.conf
-
-# Test
 ./log_monitor --debug
 ```
 
@@ -150,11 +147,11 @@ crontab -e
 # Debug mode (detailed output)
 ./log_monitor --debug
 
+# Check for and install latest version
+./log_monitor --update
+
 # Show version
 ./log_monitor --version
-
-# Show help
-./log_monitor --help
 ```
 
 ---

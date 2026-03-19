@@ -29,3 +29,9 @@ to_email = admin@example.com
 # (falls back to /tmp/vgx.logmonitor if script directory is not writable)
 # notification_file = <script_dir>/notifications.log
 # last_check_file = <script_dir>/.last_check
+
+[Settings]
+# Auto-update: check GitHub for new releases once per day (default: true)
+# When a new version is found, the binary is replaced automatically.
+# Disable with: auto_update = false
+auto_update = true

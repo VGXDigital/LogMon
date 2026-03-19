@@ -121,13 +121,47 @@ last_check_file = /var/log/vgx/.last_check
 - GitHub Actions automatically builds on Ubuntu (compatible with most Linux distributions)
 - For different platforms, you'll need to build locally on that platform
 
+## Self-Update
+
+LogMon v1.4.0+ automatically checks GitHub for new releases once per day and updates itself in-place. No separate scripts or cron jobs needed — just run the monitor and it stays current.
+
+### How It Works
+
+1. On each run, LogMon checks if 24 hours have passed since the last update check
+2. If so, it queries the GitHub Releases API for the latest version
+3. If a newer version exists, it downloads the release tarball, backs up the current binary, and replaces it
+4. The new version takes effect on the next cron run
+
+### Manual Update
+
+```bash
+./log_monitor --update
+```
+
+### Disable Auto-Update
+
+Add to `log_monitor.conf`:
+```ini
+[Settings]
+auto_update = false
+```
+
+### Notes
+
+- Auto-update only works with the standalone PyInstaller binary (not when running from source)
+- The previous binary is always backed up as `log_monitor.bak`
+- Update checks are throttled to once per 24 hours to avoid API rate limits
+- If the update fails (network error, etc.), the monitor continues running normally
+
+---
+
 ## Creating a New Release
 
 To create a new release with an automatically built executable:
 
 1. Update the version in `log_monitor.py`:
 ```python
-__version__ = "1.2.0"  # Increment as needed
+__version__ = "1.3.4"  # Increment as needed
 ```
 
 2. Commit the change:
@@ -138,9 +172,9 @@ git commit -m "Bump version to 1.2.0"
 
 3. Create and push a version tag:
 ```bash
-git tag v1.2.0
+git tag v1.3.4
 git push origin main
-git push origin v1.2.0
+git push origin v1.3.4
 ```
 
 4. GitHub Actions will automatically:
@@ -149,4 +183,4 @@ git push origin v1.2.0
    - Upload the executable as `log_monitor-linux-x86_64`
    - Make it available for download
 
-The release will be available at: `https://github.com/VGXConsulting/LogMon/releases/tag/v1.2.0`
+The release will be available at: `https://github.com/VGXConsulting/LogMon/releases/tag/v1.3.4`

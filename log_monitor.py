@@ -13,10 +13,15 @@ or use of this software is strictly prohibited.
 import os
 import re
 import ssl
+import sys
+import json
 import time
+import shutil
 import smtplib
+import tarfile
 import argparse
 import configparser
+import urllib.request
 import concurrent.futures
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -24,10 +29,12 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.3.3"
+__version__ = "1.4.0"
 
 
 class LogMonitor:
+    REPO = "VGXConsulting/LogMon"
+
     error_patterns = [
         r'error', r'fail', r'exception', r'traceback', r'critical',
         r'fatal', r'warning', r'not found', r'permission denied',
@@ -84,6 +91,9 @@ class LogMonitor:
         self.smtp_from_email = os.getenv('VGX_LM_SMTP_FROM') or cfg('SMTP', 'from_email')
         self.smtp_to_email = os.getenv('VGX_LM_SMTP_TO') or cfg('SMTP', 'to_email')
 
+        # Auto-update settings
+        self.auto_update = config.getboolean('Settings', 'auto_update', fallback=True)
+
     def _print_debug_info(self) -> None:
         """Print debug information."""
         print("Monitoring with combined regex pattern")
@@ -107,6 +117,134 @@ class LogMonitor:
             fallback_dir = Path('/tmp/vgx.logmonitor')
             fallback_dir.mkdir(exist_ok=True)
             return fallback_dir
+
+    # ── Self-update ────────────────────────────────────────────
+
+    def _update_check_file(self) -> Path:
+        return self.last_check_file.parent / '.last_update_check'
+
+    def _should_check_update(self) -> bool:
+        """True if at least 24 hours since last update check."""
+        uc = self._update_check_file()
+        if uc.exists():
+            try:
+                if time.time() - float(uc.read_text().strip()) < 86400:
+                    return False
+            except (ValueError, OSError):
+                pass
+        return True
+
+    def check_for_update(self, force: bool = False) -> bool:
+        """Check GitHub for a newer release and self-update. Returns True if updated."""
+        if not getattr(sys, 'frozen', False):
+            if self.debug:
+                print("Auto-update skipped: running from source (use git pull)")
+            return False
+
+        if not force and not self._should_check_update():
+            if self.debug:
+                print("Update check skipped: already checked today")
+            return False
+
+        if self.debug:
+            print(f"\nChecking for updates (current: v{__version__})...")
+
+        try:
+            api_url = f"https://api.github.com/repos/{self.REPO}/releases/latest"
+            req = urllib.request.Request(api_url, headers={"Accept": "application/vnd.github.v3+json"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                release = json.loads(resp.read())
+
+            # Record that we checked (even if no update)
+            try:
+                self._update_check_file().write_text(str(time.time()))
+            except OSError:
+                pass
+
+            latest_version = release.get("tag_name", "").lstrip("v")
+            if not latest_version:
+                return False
+
+            current = tuple(int(x) for x in __version__.split('.'))
+            latest = tuple(int(x) for x in latest_version.split('.'))
+
+            if latest <= current:
+                if self.debug:
+                    print(f"Already up to date: v{__version__}")
+                return False
+
+            if self.debug:
+                print(f"New version available: v{latest_version}")
+
+            # Find the linux tarball asset
+            tarball_url = None
+            for asset in release.get("assets", []):
+                if asset["name"].endswith("-linux-x86_64.tar.gz"):
+                    tarball_url = asset["browser_download_url"]
+                    break
+
+            if not tarball_url:
+                if self.debug:
+                    print("No compatible binary found in release")
+                return False
+
+            return self._download_and_install(tarball_url, latest_version)
+
+        except Exception as e:
+            if self.debug:
+                print(f"Update check failed: {e}")
+            return False
+
+    def _download_and_install(self, url: str, version: str) -> bool:
+        """Download release tarball and replace current binary."""
+        binary_path = Path(sys.executable)
+        tmp_dir = None
+
+        if self.debug:
+            print(f"Downloading v{version}...")
+
+        try:
+            import tempfile
+            tmp_dir = tempfile.mkdtemp(prefix="logmon_update_")
+            tarball_path = os.path.join(tmp_dir, "release.tar.gz")
+
+            urllib.request.urlretrieve(url, tarball_path)
+
+            with tarfile.open(tarball_path, 'r:gz') as tar:
+                try:
+                    tar.extractall(tmp_dir, filter='data')
+                except TypeError:
+                    tar.extractall(tmp_dir)
+
+            new_binary = Path(tmp_dir) / "log_monitor"
+            if not new_binary.exists():
+                if self.debug:
+                    print("Binary not found in archive")
+                return False
+
+            # Backup current binary
+            backup_path = binary_path.with_suffix('.bak')
+            shutil.copy2(str(binary_path), str(backup_path))
+
+            # Replace binary (atomic on same filesystem)
+            shutil.move(str(new_binary), str(binary_path))
+            os.chmod(str(binary_path), 0o755)
+
+            if self.debug:
+                print(f"Updated to v{version} (backup: {backup_path})")
+                print("New version will be active on next run")
+
+            return True
+
+        except Exception as e:
+            if self.debug:
+                print(f"Update failed: {e}")
+            return False
+        finally:
+            if tmp_dir:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    # ── Log scanning ─────────────────────────────────────────
 
     def get_log_files(self) -> List[Path]:
         """Get all .log files recursively in log_dir, excluding notification file."""
@@ -313,6 +451,10 @@ class LogMonitor:
 
     def run(self) -> None:
         """Main method to run the log monitor."""
+        # Auto-update before scanning
+        if self.auto_update:
+            self.check_for_update()
+
         if self.debug:
             print("\n" + "=" * 60)
             print("Starting log scan...")
@@ -335,17 +477,27 @@ class LogMonitor:
 def main():
     """Main function to run the log monitor."""
     parser = argparse.ArgumentParser(
-        description='Monitor log files for errors and send notifications',
+        description=f'VGX LogMon v{__version__} — Monitor log files for errors and send notifications',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('--debug', action='store_true',
                         help='Enable debug mode with detailed logging to notification file')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {__version__}')
+    parser.add_argument('--update', action='store_true',
+                        help='Check for and install the latest version, then exit')
 
     args = parser.parse_args()
 
     try:
+        if args.update:
+            monitor = LogMonitor(debug=True)
+            if monitor.check_for_update(force=True):
+                print("Updated successfully. New version active on next run.")
+            else:
+                print(f"Already at latest version: v{__version__}")
+            return
+
         monitor = LogMonitor(debug=args.debug)
         monitor.run()
     except Exception as e:
