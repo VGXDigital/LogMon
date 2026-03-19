@@ -8,7 +8,7 @@
 
 **Simple, automated log file monitoring with email notifications.**
 
-[![Release](https://img.shields.io/github/v/release/VGXConsulting/LogMon?style=flat-square)](https://github.com/VGXConsulting/LogMon/releases/latest)
+[![Release](https://img.shields.io/github/v/release/VGXDigital/LogMon?style=flat-square)](https://github.com/VGXDigital/LogMon/releases/latest)
 [![License](https://img.shields.io/badge/license-Proprietary-blue?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20x86__64-lightgrey?style=flat-square)]()
 
@@ -32,7 +32,7 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 ## 🆕 What's New in v1.4.0
 
 - **Self-updating**: LogMon auto-updates itself from GitHub Releases (checks once daily)
-- One-line install: `curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash`
+- One-line install: `curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash`
 - Manual update: `./log_monitor --update`
 - Fix: Handle quoted values in config file
 
@@ -43,12 +43,12 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 ### Option 1: One-Line Install (Recommended)
 
 ```bash
-curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash
+curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash
 ```
 
 Or specify an install directory:
 ```bash
-curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash -s -- /opt/logmon
+curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash -s -- /opt/logmon
 ```
 
 Then configure and test:
@@ -62,7 +62,7 @@ nano log_monitor.conf
 
 ```bash
 # Clone the repository
-git clone https://github.com/VGXConsulting/LogMon.git
+git clone https://github.com/VGXDigital/LogMon.git
 cd LogMon
 
 # Configure

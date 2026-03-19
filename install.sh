@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-REPO="VGXConsulting/LogMon"
+REPO="VGXDigital/LogMon"
 INSTALL_DIR="${1:-$HOME}"
 
 log() { echo "[LogMon] $*"; }

@@ -29,11 +29,11 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 
 class LogMonitor:
-    REPO = "VGXConsulting/LogMon"
+    REPO = "VGXDigital/LogMon"
 
     error_patterns = [
         r'error', r'fail', r'exception', r'traceback', r'critical',
