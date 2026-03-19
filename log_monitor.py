@@ -29,7 +29,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.1"
+__version__ = "1.4.2"
 
 
 class LogMonitor:
@@ -60,18 +60,32 @@ class LogMonitor:
             self.notification_file.touch(exist_ok=True)
 
     @staticmethod
-    def _strip_quotes(value: Optional[str]) -> Optional[str]:
+    def _strip_quotes(value) -> Optional[str]:
         """Strip surrounding quotes from config values."""
-        if value and len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        if value is None:
+            return None
+        value = str(value)
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
             return value[1:-1]
         return value
 
     def _configure(self) -> None:
-        """Load configuration from file and environment."""
+        """Load configuration from file and environment.
+
+        Config lookup order:
+        1. Current working directory
+        2. Directory where the binary/script lives
+        """
         config = configparser.ConfigParser()
         config_file = Path.cwd() / 'log_monitor.conf'
+        if not config_file.exists():
+            # For PyInstaller binaries: check next to the executable
+            binary_dir = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
+            config_file = binary_dir / 'log_monitor.conf'
         if config_file.exists():
             config.read(config_file)
+            if self.debug:
+                print(f"Config file: {config_file}")
 
         def cfg(section: str, key: str, fallback: Any = None) -> Optional[str]:
             return self._strip_quotes(config.get(section, key, fallback=fallback))
