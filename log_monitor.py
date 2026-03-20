@@ -29,7 +29,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.2"
+__version__ = "1.4.3"
 
 
 class LogMonitor:
@@ -257,6 +257,26 @@ class LogMonitor:
         finally:
             if tmp_dir:
                 shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    # ── Log truncation ────────────────────────────────────────
+
+    def truncate_logs(self) -> None:
+        """Truncate all monitored log files to zero bytes."""
+        log_files = self.get_log_files()
+        if not log_files:
+            if self.debug:
+                print("No log files found to truncate.")
+            return
+
+        for log_file in log_files:
+            try:
+                log_file.write_text('')
+                if self.debug:
+                    print(f"  Truncated: {log_file}")
+            except (OSError, IOError) as e:
+                print(f"  Failed to truncate {log_file}: {e}")
+
+        print(f"Truncated {len(log_files)} log file(s).")
 
     # ── Log scanning ─────────────────────────────────────────
 
@@ -498,12 +518,19 @@ def main():
                         help='Enable debug mode with detailed logging to notification file')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {__version__}')
+    parser.add_argument('--truncate-logs', action='store_true',
+                        help='Truncate all monitored log files to zero bytes, then exit')
     parser.add_argument('--update', action='store_true',
                         help='Check for and install the latest version, then exit')
 
     args = parser.parse_args()
 
     try:
+        if args.truncate_logs:
+            monitor = LogMonitor(debug=args.debug)
+            monitor.truncate_logs()
+            return
+
         if args.update:
             monitor = LogMonitor(debug=True)
             if monitor.check_for_update(force=True):

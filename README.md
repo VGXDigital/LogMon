@@ -30,7 +30,11 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ---
 
-## 🆕 What's New in v1.4.2
+## 🆕 What's New in v1.4.3
+
+- **`--truncate-logs`**: New flag to truncate all monitored log files to zero bytes — handy for test environments where logs keep growing
+
+### v1.4.2
 
 - **Self-updating**: LogMon auto-updates itself from GitHub Releases (checks once daily)
 - **One-line install**: `curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash`
@@ -157,6 +161,9 @@ crontab -e
 
 # Debug mode (detailed output)
 ./log_monitor --debug
+
+# Truncate all monitored log files (useful in test)
+./log_monitor --truncate-logs
 
 # Check for and install latest version
 ./log_monitor --update
