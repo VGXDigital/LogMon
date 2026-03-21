@@ -30,7 +30,11 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ---
 
-## 🆕 What's New in v1.4.3
+## 🆕 What's New in v1.4.4
+
+- **Self-scan fix**: LogMon no longer triggers false positives from its own debug output — all output is now prefixed with `[LogMon]` and skipped during scanning, so genuine errors in `log_monitor.log` are still caught
+
+### v1.4.3
 
 - **`--truncate-logs`**: New flag to truncate all monitored log files to zero bytes — handy for test environments where logs keep growing
 

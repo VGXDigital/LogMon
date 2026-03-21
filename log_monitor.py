@@ -29,11 +29,12 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.3"
+__version__ = "1.4.4"
 
 
 class LogMonitor:
     REPO = "VGXDigital/LogMon"
+    LOG_PREFIX = "[LogMon]"
 
     error_patterns = [
         r'error', r'fail', r'exception', r'traceback', r'critical',
@@ -42,14 +43,18 @@ class LogMonitor:
         r'exit code', r'returned non-zero', r'aborted', r'killed'
     ]
 
+    def _log(self, message: str) -> None:
+        """Print a message with the LogMon prefix so self-scanning can skip it."""
+        print(f"{self.LOG_PREFIX} {message}")
+
     def __init__(self, debug: bool = False):
         """Initialize the LogMonitor."""
         self.debug = debug
         if self.debug:
-            print("=" * 60)
-            print("VGX Log Monitor - Debug Mode")
-            print(f"Run started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print("=" * 60)
+            self._log("=" * 60)
+            self._log("VGX Log Monitor - Debug Mode")
+            self._log(f"Run started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            self._log("=" * 60)
 
         self._configure()
         self.compiled_pattern = re.compile('|'.join(self.error_patterns), re.IGNORECASE)
@@ -85,7 +90,7 @@ class LogMonitor:
         if config_file.exists():
             config.read(config_file)
             if self.debug:
-                print(f"Config file: {config_file}")
+                self._log(f"Config file: {config_file}")
 
         def cfg(section: str, key: str, fallback: Any = None) -> Optional[str]:
             return self._strip_quotes(config.get(section, key, fallback=fallback))
@@ -110,15 +115,15 @@ class LogMonitor:
 
     def _print_debug_info(self) -> None:
         """Print debug information."""
-        print("Monitoring with combined regex pattern")
-        print(f"Log directory: {self.log_dir}")
-        print(f"State directory: {self.last_check_file.parent}")
-        print(f"Notification file: {self.notification_file}")
-        print(f"Last check file: {self.last_check_file}")
-        print(f"SMTP Server: {self.smtp_server}:{self.smtp_port}")
-        print(f"SMTP From: {self.smtp_from_email}")
-        print(f"SMTP To: {self.smtp_to_email}")
-        print(f"SMTP Username: {self.smtp_username}")
+        self._log("Monitoring with combined regex pattern")
+        self._log(f"Log directory: {self.log_dir}")
+        self._log(f"State directory: {self.last_check_file.parent}")
+        self._log(f"Notification file: {self.notification_file}")
+        self._log(f"Last check file: {self.last_check_file}")
+        self._log(f"SMTP Server: {self.smtp_server}:{self.smtp_port}")
+        self._log(f"SMTP From: {self.smtp_from_email}")
+        self._log(f"SMTP To: {self.smtp_to_email}")
+        self._log(f"SMTP Username: {self.smtp_username}")
 
     def _get_writable_directory(self, preferred_dir: Path) -> Path:
         """Determine writable directory for state files."""
@@ -152,16 +157,16 @@ class LogMonitor:
         """Check GitHub for a newer release and self-update. Returns True if updated."""
         if not getattr(sys, 'frozen', False):
             if self.debug:
-                print("Auto-update skipped: running from source (use git pull)")
+                self._log("Auto-update skipped: running from source (use git pull)")
             return False
 
         if not force and not self._should_check_update():
             if self.debug:
-                print("Update check skipped: already checked today")
+                self._log("Update check skipped: already checked today")
             return False
 
         if self.debug:
-            print(f"\nChecking for updates (current: v{__version__})...")
+            self._log(f"\nChecking for updates (current: v{__version__})...")
 
         try:
             api_url = f"https://api.github.com/repos/{self.REPO}/releases/latest"
@@ -184,11 +189,11 @@ class LogMonitor:
 
             if latest <= current:
                 if self.debug:
-                    print(f"Already up to date: v{__version__}")
+                    self._log(f"Already up to date: v{__version__}")
                 return False
 
             if self.debug:
-                print(f"New version available: v{latest_version}")
+                self._log(f"New version available: v{latest_version}")
 
             # Find the linux tarball asset
             tarball_url = None
@@ -199,14 +204,14 @@ class LogMonitor:
 
             if not tarball_url:
                 if self.debug:
-                    print("No compatible binary found in release")
+                    self._log("No compatible binary found in release")
                 return False
 
             return self._download_and_install(tarball_url, latest_version)
 
         except Exception as e:
             if self.debug:
-                print(f"Update check failed: {e}")
+                self._log(f"Update check failed: {e}")
             return False
 
     def _download_and_install(self, url: str, version: str) -> bool:
@@ -215,7 +220,7 @@ class LogMonitor:
         tmp_dir = None
 
         if self.debug:
-            print(f"Downloading v{version}...")
+            self._log(f"Downloading v{version}...")
 
         try:
             import tempfile
@@ -233,7 +238,7 @@ class LogMonitor:
             new_binary = Path(tmp_dir) / "log_monitor"
             if not new_binary.exists():
                 if self.debug:
-                    print("Binary not found in archive")
+                    self._log("Binary not found in archive")
                 return False
 
             # Backup current binary
@@ -245,14 +250,14 @@ class LogMonitor:
             os.chmod(str(binary_path), 0o755)
 
             if self.debug:
-                print(f"Updated to v{version} (backup: {backup_path})")
-                print("New version will be active on next run")
+                self._log(f"Updated to v{version} (backup: {backup_path})")
+                self._log("New version will be active on next run")
 
             return True
 
         except Exception as e:
             if self.debug:
-                print(f"Update failed: {e}")
+                self._log(f"Update failed: {e}")
             return False
         finally:
             if tmp_dir:
@@ -265,18 +270,18 @@ class LogMonitor:
         log_files = self.get_log_files()
         if not log_files:
             if self.debug:
-                print("No log files found to truncate.")
+                self._log("No log files found to truncate.")
             return
 
         for log_file in log_files:
             try:
                 log_file.write_text('')
                 if self.debug:
-                    print(f"  Truncated: {log_file}")
+                    self._log(f"  Truncated: {log_file}")
             except (OSError, IOError) as e:
-                print(f"  Failed to truncate {log_file}: {e}")
+                self._log(f"  Failed to truncate {log_file}: {e}")
 
-        print(f"Truncated {len(log_files)} log file(s).")
+        self._log(f"Truncated {len(log_files)} log file(s).")
 
     # ── Log scanning ─────────────────────────────────────────
 
@@ -284,7 +289,7 @@ class LogMonitor:
         """Get all .log files recursively in log_dir, excluding notification file."""
         if not self.log_dir.exists():
             if self.debug:
-                print(f"WARNING: Log directory does not exist: {self.log_dir}")
+                self._log(f"WARNING: Log directory does not exist: {self.log_dir}")
             return []
 
         log_files = list(self.log_dir.rglob('*.log'))
@@ -292,9 +297,9 @@ class LogMonitor:
         filtered_files = [f for f in log_files if f.resolve() != self.notification_file.resolve()]
 
         if self.debug:
-            print(f"\nFound {len(filtered_files)} log file(s) to monitor:")
+            self._log(f"\nFound {len(filtered_files)} log file(s) to monitor:")
             for f in filtered_files:
-                print(f"  - {f}")
+                self._log(f"  - {f}")
 
         return filtered_files
 
@@ -323,6 +328,8 @@ class LogMonitor:
         try:
             with filepath.open('r', encoding='utf-8', errors='ignore') as f:
                 for i, line in enumerate(f, 1):
+                    if self.LOG_PREFIX in line:
+                        continue
                     if self.compiled_pattern.search(line):
                         errors.append({
                             'file': str(filepath),
@@ -344,12 +351,12 @@ class LogMonitor:
         if last_check == 0:
             last_check = current_time - 3600
             if self.debug:
-                print("\nFirst run detected - scanning last hour of logs")
+                self._log("\nFirst run detected - scanning last hour of logs")
         
         if self.debug:
             last_check_time = datetime.fromtimestamp(last_check).strftime('%Y-%m-%d %H:%M:%S')
-            print(f"\nLast check: {last_check_time}")
-            print("\nScanning log files for errors...")
+            self._log(f"\nLast check: {last_check_time}")
+            self._log("\nScanning log files for errors...")
 
         all_errors: List[Dict[str, Any]] = []
         log_files = self.get_log_files()
@@ -362,16 +369,16 @@ class LogMonitor:
                     errors = future.result()
                     if errors:
                         if self.debug:
-                            print(f"    Found {len(errors)} error(s) in {log_file}")
+                            self._log(f"    Found {len(errors)} error(s) in {log_file}")
                         all_errors.extend(errors)
                 except Exception as exc:
                     if self.debug:
-                        print(f"{log_file} generated an exception: {exc}")
+                        self._log(f"{log_file} generated an exception: {exc}")
 
         self.set_last_check_time(current_time)
 
         if self.debug:
-            print(f"\nTotal errors found: {len(all_errors)}")
+            self._log(f"\nTotal errors found: {len(all_errors)}")
 
         return all_errors
 
@@ -387,7 +394,7 @@ class LogMonitor:
             with self.notification_file.open('a') as f:
                 f.write(log_entry)
         except (OSError, IOError) as e:
-            print(f"Warning: Could not write to notification file: {e}")
+            self._log(f"Warning: Could not write to notification file: {e}")
 
     def send_notification(self, errors: List[Dict[str, Any]]) -> None:
         """Send notifications about detected errors."""
@@ -451,11 +458,11 @@ class LogMonitor:
         error_count = len(errors)
         try:
             if self.debug:
-                print("\nAttempting to send email notification...")
-                print(f"  SMTP Server: {self.smtp_server}:{self.smtp_port}")
-                print(f"  From: {self.smtp_from_email}")
-                print(f"  To: {self.smtp_to_email}")
-                print(f"  Username: {self.smtp_username}")
+                self._log("\nAttempting to send email notification...")
+                self._log(f"  SMTP Server: {self.smtp_server}:{self.smtp_port}")
+                self._log(f"  From: {self.smtp_from_email}")
+                self._log(f"  To: {self.smtp_to_email}")
+                self._log(f"  Username: {self.smtp_username}")
 
             if not all([self.smtp_server, self.smtp_username, self.smtp_password, self.smtp_from_email, self.smtp_to_email]):
                 raise ValueError("Missing SMTP configuration. Please check your config file or environment variables.")
@@ -474,13 +481,13 @@ class LogMonitor:
                 server.sendmail(self.smtp_from_email, self.smtp_to_email, msg.as_string())
 
             if self.debug:
-                print(f"  ✓ Email sent successfully to {self.smtp_to_email}")
+                self._log(f"  Email sent successfully to {self.smtp_to_email}")
             self.log_notification(f"Email sent to {self.smtp_to_email}")
 
         except Exception as e:
             error_msg = f"Failed to send email: {e}"
             if self.debug:
-                print(f"  ✗ {error_msg}")
+                self._log(f"  {error_msg}")
             self.log_notification(error_msg)
 
     def run(self) -> None:
@@ -490,22 +497,22 @@ class LogMonitor:
             self.check_for_update()
 
         if self.debug:
-            print("\n" + "=" * 60)
-            print("Starting log scan...")
-            print("=" * 60)
+            self._log("\n" + "=" * 60)
+            self._log("Starting log scan...")
+            self._log("=" * 60)
 
         errors = self.scan_all_logs()
 
         if errors:
             self.send_notification(errors)
         elif self.debug:
-            print("\n✓ No errors found - all clear!")
+            self._log("\nNo errors found - all clear!")
 
         if self.debug:
-            print("\n" + "=" * 60)
-            print("Log monitor completed")
-            print(f"Run finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print("=" * 60)
+            self._log("\n" + "=" * 60)
+            self._log("Log monitor completed")
+            self._log(f"Run finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            self._log("=" * 60)
 
 
 def main():
@@ -534,15 +541,15 @@ def main():
         if args.update:
             monitor = LogMonitor(debug=True)
             if monitor.check_for_update(force=True):
-                print("Updated successfully. New version active on next run.")
+                monitor._log("Updated successfully. New version active on next run.")
             else:
-                print(f"Already at latest version: v{__version__}")
+                monitor._log(f"Already at latest version: v{__version__}")
             return
 
         monitor = LogMonitor(debug=args.debug)
         monitor.run()
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"{LogMonitor.LOG_PREFIX} An unexpected error occurred: {e}")
         if args.debug:
             import traceback
             traceback.print_exc()
