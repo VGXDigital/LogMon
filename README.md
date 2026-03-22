@@ -30,7 +30,11 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ---
 
-## 🆕 What's New in v1.4.6
+## 🆕 What's New in v1.4.7
+
+- **Self-scan fix**: Multiline `_log()` messages (containing `\n`) now prefix every line with `[LogMon]`, preventing false positives when cron redirects output to a log file
+
+### v1.4.6
 
 - **Cleaner `--update` output**: `--update` no longer dumps full debug info — only shows update status. Use `--update --debug` for verbose output.
 

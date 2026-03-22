@@ -29,7 +29,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.6"
+__version__ = "1.4.7"
 
 
 class LogMonitor:
@@ -45,7 +45,8 @@ class LogMonitor:
 
     def _log(self, message: str) -> None:
         """Print a message with the LogMon prefix so self-scanning can skip it."""
-        print(f"{self.LOG_PREFIX} {message}")
+        for line in message.splitlines(keepends=False):
+            print(f"{self.LOG_PREFIX} {line}")
 
     def __init__(self, debug: bool = False):
         """Initialize the LogMonitor."""
@@ -558,7 +559,8 @@ def main():
         print(f"{LogMonitor.LOG_PREFIX} An unexpected error occurred: {e}")
         if args.debug:
             import traceback
-            traceback.print_exc()
+            for line in traceback.format_exc().splitlines():
+                print(f"{LogMonitor.LOG_PREFIX} {line}")
 
 
 if __name__ == "__main__":
