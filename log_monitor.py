@@ -29,7 +29,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.5"
+__version__ = "1.4.6"
 
 
 class LogMonitor:
@@ -544,7 +544,8 @@ def main():
             return
 
         if args.update:
-            monitor = LogMonitor(debug=True)
+            monitor = LogMonitor(debug=args.debug)
+            monitor._log(f"Checking for updates (current: v{__version__})...")
             if monitor.check_for_update(force=True):
                 monitor._log("Updated successfully. New version active on next run.")
             else:
