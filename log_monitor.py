@@ -29,7 +29,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.7"
+__version__ = "1.4.8"
 
 
 class LogMonitor:
@@ -40,7 +40,7 @@ class LogMonitor:
         r'error', r'fail', r'exception', r'traceback', r'critical',
         r'fatal', r'warning', r'not found', r'permission denied',
         r'connection refused', r'timeout', r'unable to', r'could not',
-        r'exit code', r'returned non-zero', r'aborted', r'killed'
+        r'exit code:\s*[1-9]', r'returned non-zero', r'aborted', r'killed'
     ]
 
     def _log(self, message: str) -> None:

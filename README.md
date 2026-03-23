@@ -30,7 +30,11 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ---
 
-## 🆕 What's New in v1.4.7
+## 🆕 What's New in v1.4.8
+
+- **Smarter `exit code` pattern**: Now only matches non-zero exit codes (`exit code: 1`, `exit code: 127`), ignoring benign `exit code: 0` and `exit code directory`
+
+### v1.4.7
 
 - **Self-scan fix**: Multiline `_log()` messages (containing `\n`) now prefix every line with `[LogMon]`, preventing false positives when cron redirects output to a log file
 
