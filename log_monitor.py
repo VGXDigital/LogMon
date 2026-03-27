@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Log Monitor Script v1.0
+Log Monitor Script
 Monitors log files for errors and sends notifications when issues are detected.
 
 VGX Consulting - Log Monitoring Solution
@@ -14,6 +14,7 @@ import os
 import re
 import ssl
 import sys
+import html
 import json
 import time
 import shutil
@@ -29,7 +30,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.8"
+__version__ = "1.4.9"
 
 
 class LogMonitor:
@@ -40,7 +41,7 @@ class LogMonitor:
         r'error', r'fail', r'exception', r'traceback', r'critical',
         r'fatal', r'warning', r'not found', r'permission denied',
         r'connection refused', r'timeout', r'unable to', r'could not',
-        r'exit code:\s*[1-9]', r'returned non-zero', r'aborted', r'killed'
+        r'exit code[:\s]+[1-9]', r'returned non-zero', r'aborted', r'killed'
     ]
 
     def _log(self, message: str) -> None:
@@ -440,9 +441,9 @@ class LogMonitor:
         for error in errors:
             html += f"""
                     <tr>
-                        <td>{error['file']}</td>
+                        <td>{html.escape(error['file'])}</td>
                         <td>{error['line_number']}</td>
-                        <td><code>{error['line_content']}</code></td>
+                        <td><code>{html.escape(error['line_content'])}</code></td>
                         <td>{error['timestamp']}</td>
                     </tr>
             """

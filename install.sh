@@ -4,8 +4,8 @@
 # Copyright (c) 2026 VGX Consulting. All rights reserved.
 #
 # Usage:
-#   curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash
-#   curl -sfL https://raw.githubusercontent.com/VGXConsulting/LogMon/main/install.sh | bash -s -- /opt/logmon
+#   curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash
+#   curl -sfL https://raw.githubusercontent.com/VGXDigital/LogMon/main/install.sh | bash -s -- /opt/logmon
 
 set -euo pipefail
 

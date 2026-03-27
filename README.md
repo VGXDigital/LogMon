@@ -30,7 +30,13 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 
 ---
 
-## 🆕 What's New in v1.4.8
+## 🆕 What's New in v1.4.9
+
+- **Broader `exit code` matching**: Pattern now matches both `exit code: 1` (with colon) and `exit code 1` (without colon), while still ignoring `exit code: 0`
+- **HTML-safe email alerts**: Log content in alert emails is now HTML-escaped, preventing rendering issues from log lines containing HTML/script tags
+- **install.sh fix**: Corrected stale GitHub URLs in installer comments
+
+### v1.4.8
 
 - **Smarter `exit code` pattern**: Now only matches non-zero exit codes (`exit code: 1`, `exit code: 127`), ignoring benign `exit code: 0` and `exit code directory`
 
@@ -150,8 +156,8 @@ LogMon scans for these error indicators:
 ```
 error, fail, exception, traceback, critical, fatal,
 warning, not found, permission denied, connection refused,
-timeout, unable to, could not, exit code, returned non-zero,
-aborted, killed
+timeout, unable to, could not, exit code N (non-zero only),
+returned non-zero, aborted, killed
 ```
 
 ---
