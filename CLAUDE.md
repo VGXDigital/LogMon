@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 LogMon is a Python 3 log file monitoring tool by VGX Consulting. It scans log directories for `*.log` files, matches error patterns via compiled regex, and sends HTML email alerts via SMTP/SSL. Designed for headless Linux servers, deployed as a standalone PyInstaller executable run via cron.
 
-**Current version:** `1.4.9` (defined in `__version__` in `log_monitor.py`)
+**Current version:** `1.5.0` (defined in `__version__` in `log_monitor.py`)
 
 ## Architecture
 
@@ -15,7 +15,7 @@ Single-file application (`log_monitor.py`, ~350 lines) with one class `LogMonito
 - **No runtime dependencies** — uses only Python standard library
 - **Configuration:** INI file (`log_monitor.conf`) with environment variable overrides (`VGX_LM_*`)
 - **Concurrency:** `ThreadPoolExecutor` with `os.cpu_count()` workers for parallel file scanning
-- **Incremental scanning:** Tracks last-check timestamp in `.last_check` file; skips unmodified files
+- **Incremental scanning:** Tracks per-file byte offsets in `.file_offsets` (JSON); only scans new content. Also uses `.last_check` timestamp to skip unmodified files entirely
 - **State files:** Written to script directory, falls back to `/tmp/vgx.logmonitor` if not writable
 
 ## Commands

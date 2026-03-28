@@ -23,14 +23,18 @@ Scan your log files for errors, exceptions, and warnings — get instant email a
 | 🔍 **Smart Pattern Detection** | Detects errors, exceptions, warnings, timeouts, and more using optimized regex |
 | 📧 **Email Notifications**     | Instant HTML email alerts via secure SMTP/SSL                                  |
 | ⚡ **High Performance**         | Concurrent scanning with thread pools and compiled regex                       |
-| ⏱️ **Incremental Scanning**    | Only scans new content since last check — efficient for cron                   |
+| ⏱️ **Incremental Scanning**    | Per-file byte offset tracking — only scans new lines, handles log rotation     |
 | 📦 **Standalone Executable**   | No Python required on your servers                                             |
 | 🔄 **Self-Updating**           | Automatically updates itself from GitHub Releases (once daily)                 |
 | 🔧 **Flexible Configuration**  | Environment variables or config file                                           |
 
 ---
 
-## 🆕 What's New in v1.4.9
+## 🆕 What's New in v1.5.0
+
+- **Per-file incremental scanning**: LogMon now tracks byte offsets per file in `.file_offsets`, so only new lines are scanned on each run. Previously reported errors are never re-reported. Handles log rotation and truncation automatically.
+
+### v1.4.9
 
 - **Broader `exit code` matching**: Pattern now matches both `exit code: 1` (with colon) and `exit code 1` (without colon), while still ignoring `exit code: 0`
 - **HTML-safe email alerts**: Log content in alert emails is now HTML-escaped, preventing rendering issues from log lines containing HTML/script tags

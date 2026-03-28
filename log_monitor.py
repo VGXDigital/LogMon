@@ -30,7 +30,7 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-__version__ = "1.4.9"
+__version__ = "1.5.0"
 
 
 class LogMonitor:
@@ -103,6 +103,7 @@ class LogMonitor:
         writable_dir = self._get_writable_directory(script_dir)
         self.notification_file = Path(cfg('Paths', 'notification_file', fallback=writable_dir / 'notifications.log'))
         self.last_check_file = Path(cfg('Paths', 'last_check_file', fallback=writable_dir / '.last_check'))
+        self.file_offsets_path = writable_dir / '.file_offsets'
 
         # SMTP settings
         self.smtp_server = os.getenv('VGX_LM_SMTP_SERVER') or cfg('SMTP', 'server')
@@ -284,6 +285,8 @@ class LogMonitor:
                 self._log(f"  Failed to truncate {log_file}: {e}")
 
         self._log(f"Truncated {len(log_files)} log file(s).")
+        # Reset scan offsets since all files are now empty
+        self._save_file_offsets({})
 
     # ── Log scanning ─────────────────────────────────────────
 
@@ -318,43 +321,86 @@ class LogMonitor:
         """Save the timestamp of the current check."""
         self.last_check_file.write_text(str(timestamp))
 
-    def find_errors_in_file(self, filepath: Path, since_timestamp: float) -> List[Dict[str, Any]]:
-        """Find errors in a specific file since the last check."""
+    def _load_file_offsets(self) -> Dict[str, Dict[str, int]]:
+        """Load per-file scan positions from state file.
+
+        Returns dict of {filepath: {"byte": N, "line": N}}.
+        """
+        if self.file_offsets_path.exists():
+            try:
+                data = json.loads(self.file_offsets_path.read_text())
+                # Migrate from old format (flat int offsets) if needed
+                migrated: Dict[str, Dict[str, int]] = {}
+                for k, v in data.items():
+                    if isinstance(v, int):
+                        migrated[k] = {"byte": v, "line": 0}
+                    else:
+                        migrated[k] = v
+                return migrated
+            except (json.JSONDecodeError, ValueError):
+                return {}
+        return {}
+
+    def _save_file_offsets(self, offsets: Dict[str, Dict[str, int]]) -> None:
+        """Save per-file scan positions to state file."""
+        self.file_offsets_path.write_text(json.dumps(offsets))
+
+    def find_errors_in_file(self, filepath: Path, since_timestamp: float,
+                            last_byte: int, last_line: int) -> tuple:
+        """Find errors in a specific file since the last scanned position.
+
+        Returns (errors_list, new_byte_offset, new_line_number).
+        """
         try:
-            if filepath.stat().st_mtime < since_timestamp:
-                return []
+            stat = filepath.stat()
+            file_size = stat.st_size
+            if stat.st_mtime < since_timestamp:
+                return [], last_byte, last_line
         except OSError:
-            return []
+            return [], 0, 0
+
+        # Log rotation detected: file is smaller than our saved offset
+        if file_size < last_byte:
+            last_byte = 0
+            last_line = 0
+            if self.debug:
+                self._log(f"  Log rotation detected for {filepath}, scanning from start")
 
         errors = []
+        line_number = last_line
+        new_byte = last_byte
         try:
             with filepath.open('r', encoding='utf-8', errors='ignore') as f:
-                for i, line in enumerate(f, 1):
+                f.seek(last_byte)
+                for line in f:
+                    line_number += 1
                     if self.LOG_PREFIX in line:
                         continue
                     if self.compiled_pattern.search(line):
                         errors.append({
                             'file': str(filepath),
-                            'line_number': i,
+                            'line_number': line_number,
                             'line_content': line.strip(),
                             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
+                new_byte = f.tell()
         except Exception as e:
             if self.debug:
                 self.log_notification(f"Error reading file {filepath}: {e}")
 
-        return errors
+        return errors, new_byte, line_number
 
     def scan_all_logs(self) -> List[Dict[str, Any]]:
         """Scan all log files for errors using a thread pool."""
         current_time = time.time()
         last_check = self.get_last_check_time()
+        file_offsets = self._load_file_offsets()
 
         if last_check == 0:
             last_check = current_time - 3600
             if self.debug:
                 self._log("\nFirst run detected - scanning last hour of logs")
-        
+
         if self.debug:
             last_check_time = datetime.fromtimestamp(last_check).strftime('%Y-%m-%d %H:%M:%S')
             self._log(f"\nLast check: {last_check_time}")
@@ -362,13 +408,23 @@ class LogMonitor:
 
         all_errors: List[Dict[str, Any]] = []
         log_files = self.get_log_files()
+        new_offsets: Dict[str, Dict[str, int]] = {}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-            future_to_file = {executor.submit(self.find_errors_in_file, log_file, last_check): log_file for log_file in log_files}
+            future_to_file = {}
+            for log_file in log_files:
+                pos = file_offsets.get(str(log_file), {"byte": 0, "line": 0})
+                future = executor.submit(
+                    self.find_errors_in_file, log_file, last_check,
+                    pos["byte"], pos["line"]
+                )
+                future_to_file[future] = log_file
+
             for future in concurrent.futures.as_completed(future_to_file):
                 log_file = future_to_file[future]
                 try:
-                    errors = future.result()
+                    errors, byte_offset, line_num = future.result()
+                    new_offsets[str(log_file)] = {"byte": byte_offset, "line": line_num}
                     if errors:
                         if self.debug:
                             self._log(f"    Found {len(errors)} error(s) in {log_file}")
@@ -378,6 +434,7 @@ class LogMonitor:
                         self._log(f"{log_file} generated an exception: {exc}")
 
         self.set_last_check_time(current_time)
+        self._save_file_offsets(new_offsets)
 
         if self.debug:
             self._log(f"\nTotal errors found: {len(all_errors)}")
